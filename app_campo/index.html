@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#ffc844" />
+    <meta name="description" content="Lançamento dos serviços de manutenção, com fotos de antes e depois." />
+    <title>Manutenção</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icones/icone-192.png" />
+    <link rel="apple-touch-icon" href="icones/icone-192.png" />
+    <link rel="stylesheet" href="estilo.css" />
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <header class="topo">
+      <div class="topo-linha">
+        <img class="logo" src="icones/marca.png" alt="" width="32" height="32" />
+        <h1 class="topo-titulo">Manutenção</h1>
+        <p class="conexao" id="conexao" role="status" aria-live="polite">
+          <span class="conexao-sinal" aria-hidden="true"></span>
+          <span class="conexao-textos">
+            <span id="conexao-estado">Verificando…</span>
+            <span id="conexao-fila"></span>
+          </span>
+        </p>
+      </div>
+      <div class="zebra" aria-hidden="true"></div>
+    </header>
+
+    <div class="avisos" id="avisos">
+      <button class="aviso aviso--acao" id="aviso-atualizar" type="button" hidden>
+        Nova versão disponível. Toque para atualizar.
+      </button>
+      <p class="aviso aviso--atencao" id="aviso-antigo" hidden>
+        Há lançamentos sem enviar há mais de 2 dias. Abra o app com internet.
+      </p>
+    </div>
+
+    <main class="conteudo">
+      <!-- Novo lançamento (também usado para corrigir um item da fila) -->
+      <section id="tela-novo" aria-labelledby="titulo-novo">
+        <div class="cabeca-form">
+          <h2 class="titulo escondido" id="titulo-novo">Novo lançamento</h2>
+          <p class="detalhe" id="detalhe-form" hidden></p>
+        </div>
+
+        <form id="formulario" novalidate>
+          <fieldset class="fotos">
+            <legend class="escondido">Fotos</legend>
+            <div class="fotos-grade">
+              <div class="foto-bloco">
+                <label class="foto" id="foto-antes" for="entrada-antes">
+                  <input class="escondido" id="entrada-antes" type="file" accept="image/*" aria-describedby="erro-foto_antes" />
+                  <span class="foto-vazia">
+                    <svg class="foto-icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l1.5 2H20a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3.5L9 4Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="12.5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+                    <span class="foto-nome">Antes</span>
+                    <span class="foto-ajuda">Tirar ou escolher</span>
+                  </span>
+                  <img class="foto-imagem" alt="Foto do antes" hidden />
+                  <span class="foto-faixa" hidden>Antes · trocar</span>
+                </label>
+                <p class="erro" id="erro-foto_antes"></p>
+              </div>
+              <div class="foto-bloco">
+                <label class="foto" id="foto-depois" for="entrada-depois">
+                  <input class="escondido" id="entrada-depois" type="file" accept="image/*" aria-describedby="erro-foto_depois" />
+                  <span class="foto-vazia">
+                    <svg class="foto-icone" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6l1.5 2H20a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3.5L9 4Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="12.5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+                    <span class="foto-nome">Depois</span>
+                    <span class="foto-ajuda">Tirar ou escolher</span>
+                  </span>
+                  <img class="foto-imagem" alt="Foto do depois" hidden />
+                  <span class="foto-faixa" hidden>Depois · trocar</span>
+                </label>
+                <p class="erro" id="erro-foto_depois"></p>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Campos de texto montados a partir de campos.js -->
+          <div id="campos"></div>
+
+          <div class="acoes-form">
+            <button class="botao botao--principal" id="salvar" type="submit">Salvar</button>
+            <button class="botao botao--secundario" id="cancelar" type="button" hidden>Cancelar correção</button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Fila de envio -->
+      <section id="tela-fila" aria-labelledby="titulo-fila" hidden>
+        <h2 class="titulo cabeca-fila" id="titulo-fila">Aguardando envio</h2>
+        <p class="aviso aviso--erro" id="aviso-parado" hidden>
+          A fila parou no lançamento com erro. Os seguintes esperam até você corrigir ou apagar esse.
+          Eles são enviados um de cada vez, na ordem em que foram feitos.
+        </p>
+        <p class="explicacao" id="explicacao-offline" hidden>
+          Sem internet agora. Eles serão enviados sozinhos quando a internet voltar.
+        </p>
+        <button class="botao botao--principal botao--largo" id="enviar-agora" type="button" hidden>Enviar agora</button>
+        <ul class="lista" id="lista-aguardando"></ul>
+        <div class="vazio" id="fila-vazia" hidden>
+          <p>Tudo o que você lançou chegou à planilha.</p>
+          <button class="botao botao--secundario" id="ir-novo" type="button">Novo lançamento</button>
+        </div>
+
+        <h2 class="titulo titulo--secao" id="titulo-enviados" hidden>Enviados nos últimos 7 dias</h2>
+        <ul class="lista lista--enviados" id="lista-enviados"></ul>
+      </section>
+    </main>
+
+    <nav class="abas" aria-label="Telas">
+      <button class="aba" id="aba-novo" type="button" data-tela="novo" aria-current="page">Novo lançamento</button>
+      <button class="aba" id="aba-fila" type="button" data-tela="fila">Fila <span class="aba-contagem" id="aba-contagem"></span></button>
+    </nav>
+
+    <div class="recado" id="recado" role="status" aria-live="polite" hidden></div>
+
+    <dialog class="dialogo" id="dialogo" aria-labelledby="dialogo-titulo">
+      <form method="dialog">
+        <h2 class="titulo" id="dialogo-titulo"></h2>
+        <p id="dialogo-texto"></p>
+        <div class="dialogo-acoes">
+          <button class="botao botao--perigo" value="sim" id="dialogo-sim"></button>
+          <button class="botao botao--secundario" value="nao">Cancelar</button>
+        </div>
+      </form>
+    </dialog>
+  </body>
+</html>
