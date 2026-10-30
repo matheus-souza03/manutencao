@@ -7,6 +7,7 @@ import {
   bytesParaBase64,
   enviadosParaLimpar,
   interpretarResposta,
+  lerUrl,
   montarEnvio,
   proximoParaEnviar,
 } from "./regras.js";
@@ -72,8 +73,9 @@ export async function enviarFila({
   }
 }
 
-async function postar(url, item, buscar) {
-  if (!/^https?:\/\//.test(url || "")) {
+async function postar(configurado, item, buscar) {
+  const url = lerUrl(configurado);
+  if (!url) {
     return {
       tipo: "tentar_depois",
       mensagem: "O app não sabe para onde enviar (falta a URL em config.js). Avise o escritório.",

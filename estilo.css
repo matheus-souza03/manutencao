@@ -72,7 +72,8 @@ p {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
   color: inherit;
 }
@@ -337,37 +338,100 @@ input {
   font-weight: 600;
 }
 
-/* ---------- Campos de texto ---------- */
+/* ---------- Campos ---------- */
 
 .campo + .campo {
   margin-top: var(--e5);
 }
 
-.campo label {
+/* A quantidade fica colada ao material; entre um material e outro, mais espaço. */
+.campo + .campo--junto {
+  margin-top: var(--e3);
+}
+
+.secao .campo + .campo:not(.campo--junto) {
+  margin-top: var(--e6);
+}
+
+.campo-rotulo {
   display: block;
   margin-bottom: var(--e2);
   font-size: var(--texto-pequeno);
   font-weight: 600;
 }
 
-.campo input {
+.titulo--secao + .explicacao {
+  margin: calc(-1 * var(--e2)) 0 var(--e4);
+}
+
+.campo input,
+.campo select {
   display: block;
   width: 100%;
   height: var(--altura-campo);
   padding: 0 var(--e4);
   border: 2px solid var(--borda-campo);
   border-radius: var(--raio);
-  background: var(--branco);
+  background-color: var(--branco);
   font-size: var(--texto-base);
 }
 
-.campo input:focus {
+.campo select {
+  appearance: none;
+  padding-right: var(--e7);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='m5 7.5 5 5 5-5' fill='none' stroke='%23211261' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--e4) center;
+  background-size: 20px;
+}
+
+.campo--curto input {
+  max-width: 10rem;
+}
+
+.campo input:focus,
+.campo select:focus {
   outline: none;
   border-color: var(--azul-900);
   box-shadow: 0 0 0 3px var(--amarelo-500);
 }
 
-.campo input[aria-invalid="true"] {
+.campo input[aria-invalid="true"],
+.campo select[aria-invalid="true"] {
+  border-color: var(--vermelho-700);
+}
+
+/* Escolhas prontas: botões lado a lado; o escolhido fica azul. */
+.opcoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--e2);
+}
+
+.opcoes:focus {
+  outline: none;
+}
+
+.opcao {
+  min-width: 64px;
+  min-height: 48px;
+  padding: 0 var(--e4);
+  border: 2px solid var(--borda-campo);
+  border-radius: var(--raio);
+  background: var(--branco);
+  font-size: var(--texto-base);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.opcao[aria-pressed="true"] {
+  border-color: var(--azul-900);
+  background: var(--azul-900);
+  color: var(--branco);
+  font-weight: 600;
+}
+
+.opcoes[aria-invalid="true"] .opcao {
   border-color: var(--vermelho-700);
 }
 

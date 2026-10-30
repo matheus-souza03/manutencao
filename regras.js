@@ -2,11 +2,13 @@
 // Testadas com node --test (app_campo/tests/).
 import { CAMPOS } from "./campos.js";
 
-export const VERSAO_CONTRATO = 1; // igual a VERSAO_CONTRATO do Apps Script
+export const VERSAO_CONTRATO = 2; // igual a VERSAO_CONTRATO do Apps Script
 export const TAMANHO_MAXIMO_TEXTO = 300; // igual ao Apps Script
 export const DIAS_ENVIADOS_VISIVEIS = 7;
 export const DIAS_PENDENCIA_ANTIGA = 2;
 const DIA_MS = 24 * 60 * 60 * 1000;
+const RE_NUMERO = /^\d+([.,]\d+)?$/; // igual ao Apps Script: "6", "06", "1,5"
+const RE_DATA = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 export const SITUACAO = {
   PENDENTE: "pendente",
@@ -22,17 +24,51 @@ export function limparTexto(valor) {
   return typeof valor === "string" ? valor.split(/\s+/).filter(Boolean).join(" ") : "";
 }
 
-/** Erros por campo ({chave: mensagem}); vazio quando está tudo certo. */
-export function validarFormulario(valores, fotos, campos = CAMPOS) {
+/** Erros por campo ({chave: mensagem}), na ordem da tela; vazio quando está tudo certo. */
+export function validarFormulario(valores, fotos, campos = CAMPOS, hoje = dataDeHoje()) {
   const erros = {};
-  campos.forEach((campo) => {
-    const texto = limparTexto(valores[campo.chave]);
-    if (!texto && campo.obrigatorio) erros[campo.chave] = `Preencha ${campo.nome}.`;
-    else if (texto.length > TAMANHO_MAXIMO_TEXTO) erros[campo.chave] = `Use no máximo ${TAMANHO_MAXIMO_TEXTO} letras.`;
-  });
   if (!fotos.antes) erros.foto_antes = "Falta a foto do antes.";
   if (!fotos.depois) erros.foto_depois = "Falta a foto do depois.";
+  campos.forEach((campo) => {
+    const erro = erroDoCampo(campo, limparTexto(valores[campo.chave]), hoje);
+    if (erro) erros[campo.chave] = erro;
+  });
   return erros;
+}
+
+function erroDoCampo(campo, texto, hoje) {
+  if (!texto) return campo.obrigatorio ? `${campo.opcoes ? "Escolha" : "Preencha"} ${campo.nome}.` : "";
+  if (texto.length > TAMANHO_MAXIMO_TEXTO) return `Use no máximo ${TAMANHO_MAXIMO_TEXTO} letras.`;
+  if (campo.tipo === "numero" && !RE_NUMERO.test(texto)) return "Use só números, por exemplo 6 ou 1,5.";
+  if (campo.tipo === "data") {
+    if (!dataValida(texto)) return "Data inválida.";
+    if (texto > hoje) return "A data não pode ser depois de hoje.";
+  }
+  return "";
+}
+
+function dataValida(texto) {
+  const partes = RE_DATA.exec(texto);
+  if (!partes) return false;
+  const data = new Date(Date.UTC(Number(partes[1]), Number(partes[2]) - 1, Number(partes[3])));
+  return data.toISOString().slice(0, 10) === texto;
+}
+
+/** "2026-10-30": a data de hoje no celular, como o campo de data usa. */
+export function dataDeHoje(agora = new Date()) {
+  return `${agora.getFullYear()}-${dois(agora.getMonth() + 1)}-${dois(agora.getDate())}`;
+}
+
+/** Sem fotos e sem nada digitado. A data não conta: ela já vem preenchida com hoje. */
+export function formularioVazio(valores, fotos, campos = CAMPOS) {
+  if (fotos.antes || fotos.depois) return false;
+  return campos.every((campo) => campo.tipo === "data" || !limparTexto(valores[campo.chave]));
+}
+
+/** O endereço do Apps Script, mesmo que tenha sido colado com algum texto em volta. */
+export function lerUrl(texto) {
+  const achado = /https?:\/\/[^\s"'<>]+/.exec(String(texto || ""));
+  return achado ? achado[0] : "";
 }
 
 export function limparCampos(valores, campos = CAMPOS) {

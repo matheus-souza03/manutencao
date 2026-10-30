@@ -5,9 +5,12 @@ import { criarFila } from "./fila.js";
 import { reduzirFoto } from "./fotos.js";
 import {
   SITUACAO,
+  TAMANHO_MAXIMO_TEXTO,
   aguardando,
+  dataDeHoje,
   emOrdem,
   formatarQuando,
+  formularioVazio,
   isoComFuso,
   limparCampos,
   podeMexer,
@@ -43,7 +46,9 @@ async function iniciar() {
   pedirArmazenamentoPersistente();
   estado.sugestoes = (await fila.lerControle("sugestoes")) || {};
   preencherSugestoes();
+  preencher(null, null);
   await restaurarRascunho();
+  acompanharHoje();
   await atualizar();
   enviarAgora();
   setInterval(() => {
@@ -51,23 +56,43 @@ async function iniciar() {
   }, INTERVALO_ENVIO_MS);
 }
 
+// Cada campo da tela: ler() e escrever(valor) o valor como texto; alvo recebe o foco e o aviso de erro.
+const controles = {};
+
 function montarCampos() {
-  const lugar = $("campos");
-  CAMPOS.forEach((campo) => {
-    const bloco = criar("div", "campo");
+  let lugar = $("campos");
+  CAMPOS.forEach((campo, indice) => {
+    if (campo.secao) {
+      lugar = criar("div", "secao");
+      lugar.append(criar("h2", "titulo titulo--secao", campo.secao));
+      if (campo.explicacao) lugar.append(criar("p", "explicacao", campo.explicacao));
+      $("campos").append(lugar);
+    }
+    const classes = ["campo"];
+    if (campo.junto) classes.push("campo--junto");
+    if (campo.tipo === "numero" && !campo.opcoes) classes.push("campo--curto");
+    const bloco = criar("div", classes.join(" "));
     const id = `campo-${campo.chave}`;
-    const rotulo = criar("label", "", campo.rotulo);
-    rotulo.htmlFor = id;
-    const entrada = criar("input");
-    Object.assign(entrada, { id: id, name: campo.chave, type: "text", autocomplete: "off", maxLength: 300 });
-    entrada.setAttribute("inputmode", campo.teclado || "text");
-    entrada.setAttribute("autocapitalize", campo.maiusculas || "sentences");
-    entrada.setAttribute("enterkeyhint", campo === CAMPOS[CAMPOS.length - 1] ? "done" : "next");
-    const descricoes = [`erro-${campo.chave}`];
+    const rotulo = criar(campo.opcoes && !campo.lista ? "p" : "label", "campo-rotulo", campo.rotulo);
+    rotulo.id = `rotulo-${campo.chave}`;
+    if (rotulo.tagName === "LABEL") rotulo.htmlFor = id;
+    bloco.append(rotulo);
+
+    let controle;
+    if (campo.opcoes && !campo.lista) controle = criarBotoes(campo, id);
+    else if (campo.opcoes) controle = criarLista(campo, id);
+    else controle = criarEntrada(campo, id);
+    // "Quantidade" sozinha não diz de quê: quem usa leitor de tela ouve "Lâmpada, Quantidade".
+    const anterior = CAMPOS[indice - 1];
+    const rotulos = campo.junto && anterior ? `rotulo-${anterior.chave} ${rotulo.id}` : rotulo.id;
+    controle.alvo.setAttribute("aria-labelledby", rotulos);
+    bloco.append(controle.alvo);
+
     // O erro fica logo abaixo do campo, antes da dica.
     const erro = criar("p", "erro");
     erro.id = `erro-${campo.chave}`;
-    bloco.append(rotulo, entrada, erro);
+    bloco.append(erro);
+    const descricoes = [erro.id];
     if (campo.dica) {
       const dica = criar("p", "dica", campo.dica);
       dica.id = `dica-${campo.chave}`;
@@ -77,12 +102,87 @@ function montarCampos() {
     if (campo.sugestoes) {
       const lista = criar("datalist");
       lista.id = `sugestoes-${campo.chave}`;
-      entrada.setAttribute("list", lista.id);
+      controle.alvo.setAttribute("list", lista.id);
       bloco.append(lista);
     }
-    entrada.setAttribute("aria-describedby", descricoes.join(" "));
+    controle.alvo.setAttribute("aria-describedby", descricoes.join(" "));
+    controles[campo.chave] = controle;
     lugar.append(bloco);
   });
+}
+
+function criarEntrada(campo, id) {
+  const entrada = criar("input");
+  Object.assign(entrada, { id: id, name: campo.chave, autocomplete: "off" });
+  if (campo.tipo === "data") {
+    entrada.type = "date";
+  } else {
+    entrada.type = "text";
+    entrada.maxLength = TAMANHO_MAXIMO_TEXTO;
+    entrada.setAttribute("inputmode", campo.tipo === "numero" ? "decimal" : campo.teclado || "text");
+    entrada.setAttribute("autocapitalize", campo.maiusculas || "sentences");
+    entrada.setAttribute("enterkeyhint", "next");
+  }
+  return {
+    alvo: entrada,
+    ler: () => entrada.value,
+    escrever: (valor) => (entrada.value = valor),
+  };
+}
+
+/** Lista que abre por cima (como "Escolher" no Forms), para listas compridas. */
+function criarLista(campo, id) {
+  const lista = criar("select");
+  Object.assign(lista, { id: id, name: campo.chave });
+  const nenhuma = criar("option", "", campo.obrigatorio ? "Escolher" : "Não usou");
+  nenhuma.value = "";
+  lista.append(nenhuma, ...campo.opcoes.map((opcao) => Object.assign(criar("option", "", opcao), { value: opcao })));
+  return {
+    alvo: lista,
+    ler: () => lista.value,
+    escrever: (valor) => (lista.value = campo.opcoes.includes(valor) ? valor : ""),
+  };
+}
+
+/** Botões lado a lado: um toque escolhe; tocar de novo no escolhido desmarca. */
+function criarBotoes(campo, id) {
+  const grupo = criar("div", "opcoes");
+  grupo.id = id;
+  grupo.tabIndex = -1;
+  grupo.setAttribute("role", "group");
+  let valor = "";
+  const botoes = campo.opcoes.map((opcao) => {
+    const botao = criar("button", "opcao", opcao);
+    botao.type = "button";
+    botao.addEventListener("click", () => {
+      escrever(valor === opcao ? "" : opcao);
+      limparErro(campo.chave);
+      salvarRascunhoDepois();
+    });
+    return botao;
+  });
+  function escrever(novo) {
+    valor = campo.opcoes.includes(novo) ? novo : "";
+    botoes.forEach((botao, i) => botao.setAttribute("aria-pressed", String(campo.opcoes[i] === valor)));
+  }
+  escrever("");
+  grupo.append(...botoes);
+  return { alvo: grupo, ler: () => valor, escrever: escrever };
+}
+
+/** A data já vem com hoje; o máximo do calendário também acompanha o dia. */
+function valorInicial(campo) {
+  return campo.tipo === "data" ? dataDeHoje() : "";
+}
+
+function acompanharHoje() {
+  CAMPOS.filter((campo) => campo.tipo === "data").forEach((campo) => {
+    controles[campo.chave].alvo.max = dataDeHoje();
+  });
+  // App aberto de um dia para o outro com o formulário em branco: a data passa a ser a de hoje.
+  if (!estado.editando && formularioVazio(lerValores(), estado.fotos)) {
+    CAMPOS.filter((campo) => campo.tipo === "data").forEach((campo) => controles[campo.chave].escrever(dataDeHoje()));
+  }
 }
 
 function ligarEventos() {
@@ -108,7 +208,9 @@ function ligarEventos() {
   });
   window.addEventListener("offline", atualizarConexao);
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") atualizar().then(() => enviarAgora());
+    if (document.visibilityState !== "visible") return;
+    acompanharHoje();
+    atualizar().then(() => enviarAgora());
   });
   if (canal) canal.onmessage = () => atualizar();
 }
@@ -262,14 +364,14 @@ function mostrarFoto(lado, blob) {
 function lerValores() {
   const valores = {};
   CAMPOS.forEach((campo) => {
-    valores[campo.chave] = $(`campo-${campo.chave}`).value;
+    valores[campo.chave] = controles[campo.chave].ler();
   });
   return valores;
 }
 
 function preencher(valores, fotos) {
   CAMPOS.forEach((campo) => {
-    $(`campo-${campo.chave}`).value = (valores && valores[campo.chave]) || "";
+    controles[campo.chave].escrever((valores && valores[campo.chave]) || valorInicial(campo));
   });
   LADOS.forEach((lado) => {
     estado.fotos[lado] = (fotos && fotos[lado]) || null;
@@ -281,8 +383,7 @@ function preencher(valores, fotos) {
 function mostrarErro(chave, mensagem) {
   const lugar = $(`erro-${chave}`);
   if (lugar) lugar.textContent = mensagem;
-  const entrada = $(`campo-${chave}`);
-  if (entrada) entrada.setAttribute("aria-invalid", "true");
+  if (controles[chave]) controles[chave].alvo.setAttribute("aria-invalid", "true");
   const lado = chave.replace("foto_", "");
   if (LADOS.includes(lado)) $(`foto-${lado}`).classList.add("foto--erro");
 }
@@ -290,8 +391,7 @@ function mostrarErro(chave, mensagem) {
 function limparErro(chave) {
   const lugar = $(`erro-${chave}`);
   if (lugar) lugar.textContent = "";
-  const entrada = $(`campo-${chave}`);
-  if (entrada) entrada.removeAttribute("aria-invalid");
+  if (controles[chave]) controles[chave].alvo.removeAttribute("aria-invalid");
   const lado = chave.replace("foto_", "");
   if (LADOS.includes(lado)) $(`foto-${lado}`).classList.remove("foto--erro");
 }
@@ -313,7 +413,7 @@ async function salvar(evento) {
   const chaves = Object.keys(erros);
   if (chaves.length > 0) {
     chaves.forEach((chave) => mostrarErro(chave, erros[chave]));
-    const primeiro = chaves[0].startsWith("foto_") ? $(`entrada-${chaves[0].slice(5)}`) : $(`campo-${chaves[0]}`);
+    const primeiro = chaves[0].startsWith("foto_") ? $(`entrada-${chaves[0].slice(5)}`) : controles[chaves[0]].alvo;
     primeiro.focus({ preventScroll: true });
     (primeiro.closest(".foto-bloco") || primeiro.closest(".campo")).scrollIntoView({ block: "center" });
     return;
@@ -495,7 +595,7 @@ async function salvarRascunho() {
   clearTimeout(relogioRascunho);
   if (estado.editando) return;
   const valores = lerValores();
-  const vazio = !estado.fotos.antes && !estado.fotos.depois && Object.values(valores).every((v) => !v.trim());
+  const vazio = formularioVazio(valores, estado.fotos);
   await fila.gravarControle("rascunho", vazio ? null : { campos: valores, antes: estado.fotos.antes, depois: estado.fotos.depois });
 }
 
