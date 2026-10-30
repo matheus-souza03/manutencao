@@ -2,7 +2,7 @@
 // do Apps Script (apps_script/Logica.gs), que diz a coluna da planilha. Veja "Acrescentar um campo"
 // no LEIA-ME. Depois de qualquer mudança aqui, aumente VERSAO em sw.js.
 //   chave: nome no envio | rotulo: texto na tela | nome: como aparece nas mensagens
-//   obrigatorio: true = não pode ficar vazio (sem isso, pode)
+//   obrigatorio: true = não pode ficar vazio (sem isso, pode) | seVazio: valor gravado se ficar vazio
 //   tipo: "texto" (padrão), "numero" ou "data", igual ao Apps Script
 //   opcoes: escolhas prontas; aparecem como botões, ou como lista com lista: true
 //   junto: fica colado ao campo de cima (a quantidade do material)
@@ -29,7 +29,7 @@ const UM_A_TRES = ["1", "2", "3"];
 export const CAMPOS = [
   { chave: "logradouro", rotulo: "Logradouro", nome: "o logradouro", obrigatorio: true, maiusculas: "words", sugestoes: true },
   { chave: "bairro", rotulo: "Bairro", nome: "o bairro", obrigatorio: true, maiusculas: "words", sugestoes: true },
-  { chave: "numero", rotulo: "Nº", nome: "o número", obrigatorio: true, maiusculas: "none", dica: 'Sem número? Escreva "s/n".' },
+  { chave: "numero", rotulo: "Nº", nome: "o número", obrigatorio: true, seVazio: "s/n", maiusculas: "none" },
   { chave: "data", rotulo: "Data do serviço", nome: "a data do serviço", obrigatorio: true, tipo: "data" },
 
   { secao: "Material usado", explicacao: "Preencha só o que usou.", chave: "lampada", rotulo: "Lâmpada", nome: "a lâmpada", opcoes: LAMPADAS, lista: true },

@@ -37,6 +37,7 @@ export function validarFormulario(valores, fotos, campos = CAMPOS, hoje = dataDe
 }
 
 function erroDoCampo(campo, texto, hoje) {
+  if (!texto && campo.seVazio) return ""; // vazio vira o valor padrão (Nº vazio = "s/n")
   if (!texto) return campo.obrigatorio ? `${campo.opcoes ? "Escolha" : "Preencha"} ${campo.nome}.` : "";
   if (texto.length > TAMANHO_MAXIMO_TEXTO) return `Use no máximo ${TAMANHO_MAXIMO_TEXTO} letras.`;
   if (campo.tipo === "numero" && !RE_NUMERO.test(texto)) return "Use só números, por exemplo 6 ou 1,5.";
@@ -74,7 +75,7 @@ export function lerUrl(texto) {
 export function limparCampos(valores, campos = CAMPOS) {
   const limpos = {};
   campos.forEach((campo) => {
-    limpos[campo.chave] = limparTexto(valores[campo.chave]);
+    limpos[campo.chave] = limparTexto(valores[campo.chave]) || campo.seVazio || "";
   });
   return limpos;
 }

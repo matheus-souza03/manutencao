@@ -21,7 +21,7 @@ import {
 } from "./regras.js";
 
 const ETIQUETA_SYNC = "enviar-fila";
-const INTERVALO_ENVIO_MS = 60 * 1000;
+const INTERVALO_ENVIO_MS = 30 * 1000;
 const MAXIMO_SUGESTOES = 200;
 const LADOS = ["antes", "depois"];
 
@@ -464,11 +464,12 @@ async function salvar(evento) {
 
 async function depoisDeSalvar(id, inicio) {
   await atualizar();
-  pedirEnvioEmSegundoPlano();
   if (!navigator.onLine) {
+    pedirEnvioEmSegundoPlano();
     recado(`${inicio} Será enviado quando houver internet.`);
     return;
   }
+  // Com internet, a própria tela envia e mostra o resultado; o segundo plano fica de reserva.
   recado(`${inicio} Enviando…`, 0);
   let item = null;
   let resultado = null;
@@ -481,7 +482,9 @@ async function depoisDeSalvar(id, inicio) {
   if (item && item.situacao === SITUACAO.ENVIADO) recado("Enviado.");
   else if (item && item.situacao === SITUACAO.ERRO) recado("A planilha recusou o lançamento. Veja o erro na fila.");
   else if (resultado && resultado.situacao === "parado") recado(`${inicio} A fila está parada num lançamento com erro. Corrija ou apague esse para os outros seguirem.`);
-  else recado(`${inicio} Será enviado quando houver internet.`);
+  else if (!navigator.onLine) recado(`${inicio} Será enviado quando houver internet.`);
+  else if (resultado && resultado.situacao === "tentar_depois") recado(`${inicio} Não foi possível enviar agora. O app tenta de novo sozinho.`);
+  else recado(`${inicio} Vai ser enviado em instantes.`);
 }
 
 // ---------- Corrigir e apagar ----------
@@ -570,7 +573,19 @@ async function executarEnvio() {
     await atualizar();
   }
   if (resultado && resultado.situacao === "tentar_depois") pedirEnvioEmSegundoPlano();
+  if (resultado && resultado.situacao === "ocupado") tentarDeNovoEm(resultado.livreEm);
   return resultado;
+}
+
+let relogioNovaTentativa = null;
+
+/**
+ * Outro envio segura a fila. Pode ser um envio de verdade (o segundo plano) ou o de um app que o
+ * Android fechou no meio; nesse caso a trava vence em livreEm e este envio assume logo depois.
+ */
+function tentarDeNovoEm(livreEm) {
+  clearTimeout(relogioNovaTentativa);
+  relogioNovaTentativa = setTimeout(() => enviarAgora(), Math.max(1000, livreEm - Date.now() + 500));
 }
 
 /** Background Sync: o Chrome envia sozinho quando a internet voltar, mesmo com o app fechado. */

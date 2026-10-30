@@ -4,7 +4,7 @@ import { enviarFila } from "./envio.js";
 
 // Aumente a cada mudança em qualquer arquivo do app (inclusive config.js): é assim que os
 // celulares percebem a versão nova e mostram "Nova versão disponível".
-const VERSAO = "4";
+const VERSAO = "6";
 const CACHE = `manutencao-${VERSAO}`;
 const ARQUIVOS = [
   "./",
@@ -69,8 +69,11 @@ self.addEventListener("sync", (evento) => {
       const canal = new BroadcastChannel("manutencao");
       try {
         const resultado = await enviarFila({ fila: criarFila(), avisar: () => canal.postMessage("mudou") });
-        // Falhou por conexão: rejeitar faz o Chrome tentar de novo mais tarde.
-        if (resultado.situacao === "tentar_depois") throw new Error(resultado.mensagem);
+        // Falhou por conexão, ou outro envio segurava a fila (talvez um app fechado no meio):
+        // rejeitar faz o Chrome tentar de novo mais tarde.
+        if (resultado.situacao === "tentar_depois" || resultado.situacao === "ocupado") {
+          throw new Error(resultado.mensagem || resultado.situacao);
+        }
       } finally {
         canal.close();
       }

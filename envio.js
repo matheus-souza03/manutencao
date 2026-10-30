@@ -12,12 +12,16 @@ import {
   proximoParaEnviar,
 } from "./regras.js";
 
-export const PRAZO_TRAVA_MS = 3 * 60 * 1000;
+// A trava vale 30 s e é renovada a cada 10 s enquanto o envio anda. Se o Android fechar o app no
+// meio do envio, ninguém renova, e em 30 s outro envio (o app reaberto ou o segundo plano) assume.
+export const PRAZO_TRAVA_MS = 30 * 1000;
+export const RENOVAR_TRAVA_MS = 10 * 1000;
 export const TEMPO_LIMITE_MS = 2 * 60 * 1000; // fotos em internet fraca demoram
 
 /**
  * Envia o que estiver na fila até acabar, parar num erro ou faltar conexão.
  * Devolve {situacao: "vazio" | "parado" | "tentar_depois" | "ocupado", enviados, mensagem}.
+ * "ocupado" traz livreEm: quando a trava do outro envio vence, se ninguém a renovar.
  * `avisar()` é chamado a cada mudança, para a tela se atualizar.
  */
 export async function enviarFila({
@@ -27,9 +31,11 @@ export async function enviarFila({
   agora = () => Date.now(),
   avisar = () => {},
   dono = novoDono(),
+  renovarCadaMs = RENOVAR_TRAVA_MS,
 }) {
   if (!(await fila.pegarTrava(dono, agora(), PRAZO_TRAVA_MS))) {
-    return { situacao: "ocupado", enviados: 0 };
+    const trava = await fila.lerControle("trava");
+    return { situacao: "ocupado", enviados: 0, livreEm: trava ? trava.ate : agora() };
   }
   let enviados = 0;
   try {
@@ -54,8 +60,15 @@ export async function enviarFila({
       if (!marcado.ok) continue; // foi apagado ou corrigido agora mesmo: olha a fila de novo
       avisar();
 
-      const resultado = await postar(url, marcado.item, buscar);
-      await fila.atualizarSe(item.id, () => true, (atual) => aplicarResultado(atual, resultado, agora()));
+      const renovacao = setInterval(() => fila.pegarTrava(dono, agora(), PRAZO_TRAVA_MS).catch(() => {}), renovarCadaMs);
+      let resultado;
+      try {
+        resultado = await postar(url, marcado.item, buscar);
+      } finally {
+        clearInterval(renovacao);
+      }
+      // Uma resposta atrasada não desfaz o que outro envio já confirmou.
+      await fila.atualizarSe(item.id, (atual) => atual.situacao !== SITUACAO.ENVIADO, (atual) => aplicarResultado(atual, resultado, agora()));
       avisar();
 
       if (resultado.tipo === "enviado") {
