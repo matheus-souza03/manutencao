@@ -192,10 +192,13 @@ function ligarEventos() {
     salvarRascunhoDepois();
   });
   LADOS.forEach((lado) => {
-    $(`entrada-${lado}`).addEventListener("change", (evento) => {
-      const arquivo = evento.target.files && evento.target.files[0];
-      evento.target.value = "";
-      if (arquivo) escolherFoto(lado, arquivo);
+    // entrada-: abre a câmera (o quadro); galeria-: escolhe uma foto já tirada.
+    [`entrada-${lado}`, `galeria-${lado}`].forEach((id) => {
+      $(id).addEventListener("change", (evento) => {
+        const arquivo = evento.target.files && evento.target.files[0];
+        evento.target.value = "";
+        if (arquivo) escolherFoto(lado, arquivo);
+      });
     });
   });
   $("cancelar").addEventListener("click", sairDaCorrecao);
@@ -338,7 +341,7 @@ async function escolherFoto(lado, arquivo) {
   } finally {
     estado.preparandoFotos -= 1;
     quadro.removeAttribute("aria-busy");
-    ajuda.textContent = "Tirar ou escolher";
+    ajuda.textContent = "Tirar foto";
   }
 }
 

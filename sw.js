@@ -4,7 +4,7 @@ import { enviarFila } from "./envio.js";
 
 // Aumente a cada mudança em qualquer arquivo do app (inclusive config.js): é assim que os
 // celulares percebem a versão nova e mostram "Nova versão disponível".
-const VERSAO = "6";
+const VERSAO = "7";
 const CACHE = `manutencao-${VERSAO}`;
 const ARQUIVOS = [
   "./",

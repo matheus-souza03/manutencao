@@ -338,6 +338,25 @@ select {
   font-weight: 600;
 }
 
+.galeria {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  margin-top: var(--e1);
+  border-radius: var(--raio);
+  color: var(--azul-900);
+  font-size: var(--texto-pequeno);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.galeria:focus-within {
+  box-shadow: var(--foco);
+}
+
 /* ---------- Campos ---------- */
 
 .campo + .campo {
