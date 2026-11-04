@@ -3,7 +3,9 @@
 // no LEIA-ME. Depois de qualquer mudança aqui, aumente VERSAO em sw.js.
 //   chave: nome no envio | rotulo: texto na tela | nome: como aparece nas mensagens
 //   obrigatorio: true = não pode ficar vazio (sem isso, pode) | seVazio: valor gravado se ficar vazio
-//   tipo: "texto" (padrão), "numero" ou "data", igual ao Apps Script
+//   tipo: "texto" (padrão), "numero" ou "data", igual ao Apps Script. Número digitado aceita só
+//     algarismos; com decimais: true, também uma vírgula (1,5)
+//   topo: aparece no alto do formulário, antes das fotos
 //   opcoes: escolhas prontas; aparecem como botões, ou como lista com lista: true
 //   junto: fica colado ao campo de cima (a quantidade do material)
 //   secao + explicacao: título que aparece antes do campo
@@ -26,23 +28,25 @@ const CABOS = [
 const PARAFUSOS = ['5/8"x2.1/2"', "250 MM", "300 MM"];
 const UM_A_TRES = ["1", "2", "3"];
 
+// A ordem aqui é a da tela; a das colunas da planilha vem do Apps Script.
 export const CAMPOS = [
+  { chave: "data", rotulo: "Data do serviço", nome: "a data do serviço", obrigatorio: true, tipo: "data", topo: true },
   { chave: "logradouro", rotulo: "Logradouro", nome: "o logradouro", obrigatorio: true, maiusculas: "words", sugestoes: true },
   { chave: "bairro", rotulo: "Bairro", nome: "o bairro", obrigatorio: true, maiusculas: "words", sugestoes: true },
-  { chave: "numero", rotulo: "Nº", nome: "o número", obrigatorio: true, seVazio: "s/n", maiusculas: "none" },
-  { chave: "data", rotulo: "Data do serviço", nome: "a data do serviço", obrigatorio: true, tipo: "data" },
+  // Obrigatório no app (04/11/2026). O Apps Script ainda grava "s/n" se chegar vazio, de versões antigas do app.
+  { chave: "numero", rotulo: "Nº", nome: "o número", obrigatorio: true, maiusculas: "none", dica: "Sem número? Escreva s/n." },
 
   { secao: "Material usado", explicacao: "Preencha só o que usou.", chave: "lampada", rotulo: "Lâmpada", nome: "a lâmpada", opcoes: LAMPADAS, lista: true },
   { chave: "lampada_qtd", rotulo: "Quantidade", nome: "a quantidade de lâmpadas", tipo: "numero", opcoes: ["1", "2"], junto: true },
   { chave: "reator", rotulo: "Reator", nome: "o reator", opcoes: REATORES, lista: true },
   { chave: "reator_qtd", rotulo: "Quantidade", nome: "a quantidade de reatores", tipo: "numero", opcoes: UM_A_TRES, junto: true },
   { chave: "cabo", rotulo: "Cabo", nome: "o cabo", opcoes: CABOS, lista: true },
-  { chave: "cabo_metros", rotulo: "Metros", nome: "os metros de cabo", tipo: "numero", junto: true },
+  { chave: "cabo_metros", rotulo: "Metros", nome: "os metros de cabo", tipo: "numero", decimais: true, junto: true },
   { chave: "braco", rotulo: "Braço", nome: "o braço", opcoes: ["1000MM", "2500MM"] },
   { chave: "braco_qtd", rotulo: "Quantidade", nome: "a quantidade de braços", tipo: "numero", opcoes: UM_A_TRES, junto: true },
   { chave: "luminaria", rotulo: "Luminária", nome: "a luminária", opcoes: ["FECHADA", "ABERTA", "LED"] },
   { chave: "luminaria_qtd", rotulo: "Quantidade", nome: "a quantidade de luminárias", tipo: "numero", opcoes: UM_A_TRES, junto: true },
-  { chave: "eletroduto_metros", rotulo: 'Eletroduto de PVC 3/4" (metros)', nome: "os metros de eletroduto", tipo: "numero" },
+  { chave: "eletroduto_metros", rotulo: 'Eletroduto de PVC 3/4" (metros)', nome: "os metros de eletroduto", tipo: "numero", decimais: true },
   { chave: "cinta", rotulo: "Cinta (par)", nome: "a cinta", opcoes: ["140MM", "220MM"] },
   { chave: "porca_arruela_qtd", rotulo: "Porca/arruela (quantidade)", nome: "a quantidade de porcas/arruelas", tipo: "numero" },
   { chave: "parafuso", rotulo: "Parafuso", nome: "o parafuso", opcoes: PARAFUSOS, lista: true },

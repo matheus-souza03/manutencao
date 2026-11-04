@@ -15,6 +15,7 @@ import {
   limparCampos,
   podeMexer,
   proximoParaEnviar,
+  somenteNumeros,
   temPendenciaAntiga,
   textoEndereco,
   validarFormulario,
@@ -68,6 +69,7 @@ function montarCampos() {
       if (campo.explicacao) lugar.append(criar("p", "explicacao", campo.explicacao));
       $("campos").append(lugar);
     }
+    const destino = campo.topo ? $("campos-topo") : lugar; // depois da seção: o 1º campo dela entra nela
     const classes = ["campo"];
     if (campo.junto) classes.push("campo--junto");
     if (campo.tipo === "numero" && !campo.opcoes) classes.push("campo--curto");
@@ -107,7 +109,7 @@ function montarCampos() {
     }
     controle.alvo.setAttribute("aria-describedby", descricoes.join(" "));
     controles[campo.chave] = controle;
-    lugar.append(bloco);
+    destino.append(bloco);
   });
 }
 
@@ -119,9 +121,17 @@ function criarEntrada(campo, id) {
   } else {
     entrada.type = "text";
     entrada.maxLength = TAMANHO_MAXIMO_TEXTO;
-    entrada.setAttribute("inputmode", campo.tipo === "numero" ? "decimal" : campo.teclado || "text");
+    const teclado = campo.tipo === "numero" ? (campo.decimais ? "decimal" : "numeric") : campo.teclado || "text";
+    entrada.setAttribute("inputmode", teclado);
     entrada.setAttribute("autocapitalize", campo.maiusculas || "sentences");
     entrada.setAttribute("enterkeyhint", "next");
+    if (campo.tipo === "numero") {
+      // Só números: o que não for algarismo (ou a vírgula dos metros) some enquanto digita ou cola.
+      entrada.addEventListener("input", () => {
+        const limpo = somenteNumeros(entrada.value, campo.decimais);
+        if (limpo !== entrada.value) entrada.value = limpo;
+      });
+    }
   }
   return {
     alvo: entrada,

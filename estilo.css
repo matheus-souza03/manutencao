@@ -252,6 +252,11 @@ select {
   font-weight: 600;
 }
 
+/* Campos que ficam acima das fotos (a data do serviço) */
+.campos-topo {
+  margin-bottom: var(--e5);
+}
+
 /* ---------- Fotos: os dois quadros lado a lado, como no relatório ---------- */
 
 .fotos {

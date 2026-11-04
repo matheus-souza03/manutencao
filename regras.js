@@ -8,6 +8,7 @@ export const DIAS_ENVIADOS_VISIVEIS = 7;
 export const DIAS_PENDENCIA_ANTIGA = 2;
 const DIA_MS = 24 * 60 * 60 * 1000;
 const RE_NUMERO = /^\d+([.,]\d+)?$/; // igual ao Apps Script: "6", "06", "1,5"
+const RE_INTEIRO = /^\d+$/;
 const RE_DATA = /^(\d{4})-(\d{2})-(\d{2})$/;
 
 export const SITUACAO = {
@@ -27,20 +28,31 @@ export function limparTexto(valor) {
 /** Erros por campo ({chave: mensagem}), na ordem da tela; vazio quando está tudo certo. */
 export function validarFormulario(valores, fotos, campos = CAMPOS, hoje = dataDeHoje()) {
   const erros = {};
-  if (!fotos.antes) erros.foto_antes = "Falta a foto do antes.";
-  if (!fotos.depois) erros.foto_depois = "Falta a foto do depois.";
-  campos.forEach((campo) => {
+  const conferir = (campo) => {
     const erro = erroDoCampo(campo, limparTexto(valores[campo.chave]), hoje);
     if (erro) erros[campo.chave] = erro;
-  });
+  };
+  campos.filter((campo) => campo.topo).forEach(conferir); // acima das fotos na tela
+  if (!fotos.antes) erros.foto_antes = "Falta a foto do antes.";
+  if (!fotos.depois) erros.foto_depois = "Falta a foto do depois.";
+  campos.filter((campo) => !campo.topo).forEach(conferir);
   return erros;
+}
+
+/** O que dá para digitar num campo de número: só algarismos e, com decimais, uma vírgula ou ponto. */
+export function somenteNumeros(texto, decimais) {
+  let limpo = String(texto || "").replace(decimais ? /[^\d.,]/g : /\D/g, "");
+  const separador = limpo.search(/[.,]/);
+  if (separador >= 0) limpo = limpo.slice(0, separador + 1) + limpo.slice(separador + 1).replace(/[.,]/g, "");
+  return limpo;
 }
 
 function erroDoCampo(campo, texto, hoje) {
   if (!texto && campo.seVazio) return ""; // vazio vira o valor padrão (Nº vazio = "s/n")
   if (!texto) return campo.obrigatorio ? `${campo.opcoes ? "Escolha" : "Preencha"} ${campo.nome}.` : "";
   if (texto.length > TAMANHO_MAXIMO_TEXTO) return `Use no máximo ${TAMANHO_MAXIMO_TEXTO} letras.`;
-  if (campo.tipo === "numero" && !RE_NUMERO.test(texto)) return "Use só números, por exemplo 6 ou 1,5.";
+  if (campo.tipo === "numero" && campo.decimais && !RE_NUMERO.test(texto)) return "Use só números, por exemplo 6 ou 1,5.";
+  if (campo.tipo === "numero" && !campo.decimais && !RE_INTEIRO.test(texto)) return "Use só números inteiros, por exemplo 6.";
   if (campo.tipo === "data") {
     if (!dataValida(texto)) return "Data inválida.";
     if (texto > hoje) return "A data não pode ser depois de hoje.";
